@@ -1,0 +1,60 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - "${API_PORT:-8080}:8080"
+      - "${DELVE_PORT:-2345}:2345"
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - "seccomp=unconfined"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    networks:
+      - secunda_network
+
+  mysql:
+    image: mysql:9.7
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD:  ${DB_PASS}
+    ports:
+      - ${DB_PORT}:${DB_INTERNAL_PORT}
+    networks:
+      - secunda_network
+    volumes:
+      - ./mysql_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u$$MYSQL_USER", "-p$$MYSQL_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  redis:
+    image: redis:latest
+    environment:
+      REDIS_USER: ${REDIS_USER}
+      REDIS_USER_PASSWORD: ${REDIS_PASSWORD}
+    ports:
+      - ${REDIS_PORT}:${REDIS_INTERNAL_PORT}
+    volumes:
+      - redis_data:/data
+
+
+networks:
+  secunda_network:
+    driver: bridge
+
+#TODO: проверить нужно ли
+volumes:
+  mysql_data:
+  redis_data:
