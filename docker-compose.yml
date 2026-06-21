@@ -54,7 +54,6 @@ networks:
   secunda_network:
     driver: bridge
 
-#TODO: проверить нужно ли
 volumes:
   mysql_data:
   redis_data:
