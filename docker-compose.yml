@@ -25,15 +25,15 @@ services:
       MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME}
       MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD:  ${DB_PASS}
+      MYSQL_PASSWORD: ${DB_PASS}
     ports:
-      - ${DB_PORT}:${DB_INTERNAL_PORT}
+      - "${DB_PORT}:${DB_INTERNAL_PORT}"
     networks:
       - secunda_network
     volumes:
-      - ./mysql_data:/var/lib/postgresql
+      - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u$$MYSQL_USER", "-p$$MYSQL_PASSWORD"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${DB_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -46,13 +46,14 @@ services:
       REDIS_USER_PASSWORD: ${REDIS_PASSWORD}
     ports:
       - ${REDIS_PORT}:${REDIS_INTERNAL_PORT}
+    networks:
+      - secunda_network
     volumes:
       - redis_data:/data
 
-
 networks:
   secunda_network:
-    driver: bridge
+    #driver: bridge
 
 volumes:
   mysql_data:

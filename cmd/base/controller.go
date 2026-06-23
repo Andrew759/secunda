@@ -1,17 +1,19 @@
 package base
 
 import (
-	"net/http"
 	"seconda/cmd/service"
+
+	"github.com/gin-gonic/gin"
 )
 
 type DIContainer struct {
-	DBDecorator service.DBDecorator
+	DBDecorator    *service.DBDecorator
+	RedisDecorator *service.RedisDecorator
 }
 
 type Controller struct {
-	ServeMux     *http.ServeMux
-	Dependencies DIContainer
+	E  *gin.Engine
+	DI *DIContainer
 }
 
 type RequestHandler interface {

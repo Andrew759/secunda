@@ -17,7 +17,6 @@ type Comment struct {
 	Comment   string    `json:"comment" gorm:"type:text;not null;"`
 	CreatedAt time.Time `json:"created_at" gorm:"type:timestamp;not null"`
 	UpdatedAt time.Time `json:"updated_at" gorm:"type:timestamp;not null"`
-	DeletedAt time.Time `json:"deleted_at" gorm:"type:timestamp;not null"`
 }
 
 var CommentNotFoundErr = errors.New("task comment not found")

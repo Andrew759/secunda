@@ -15,7 +15,6 @@ type Member struct {
 	Team      Team      `json:"team" gorm:"foreignKey:TeamId;references:Id"`
 	CreatedAt time.Time `json:"created_at" gorm:"type:timestamp;not null"`
 	UpdatedAt time.Time `json:"updated_at" gorm:"type:timestamp;not null"`
-	DeletedAt time.Time `json:"deleted_at" gorm:"type:timestamp;not null"`
 }
 
 var MemberNotFoundErr = errors.New("team member not found")

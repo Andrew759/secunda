@@ -1,31 +1,32 @@
 package factory
 
 import (
-	"net/http"
 	"seconda/cmd/base"
 	"seconda/cmd/service"
+	"seconda/internal/controller/auth"
+
+	"github.com/gin-gonic/gin"
 )
 
-func BuildAndServe(dbDecorator service.DBDecorator) {
-	mux := BuildServer(dbDecorator)
+func BuildAndServe(dbDecorator *service.DBDecorator, redisDecorator *service.RedisDecorator) error {
+	e := gin.Default()
 
-	err := http.ListenAndServe(":8080", mux)
+	initAuthService(e, &base.DIContainer{DBDecorator: dbDecorator, RedisDecorator: redisDecorator})
+
+	err := e.Run()
 	if err != nil {
-		panic(err)
+		return err
 	}
+
+	return nil
 }
 
-func BuildServer(dbDecorator service.DBDecorator) *http.ServeMux {
-	mux := http.NewServeMux()
-
-	diContainer := base.DIContainer{
-		DBDecorator: dbDecorator,
+func initAuthService(e *gin.Engine, aDIC *base.DIContainer) {
+	authService := auth.AuthController{
+		Controller: base.Controller{
+			E:  e,
+			DI: aDIC,
+		},
 	}
-	initCommandWorkService(mux, diContainer)
-
-	return mux
-}
-
-func initCommandWorkService(mux *http.ServeMux, diContainer base.DIContainer) {
-
+	authService.HandleRequest()
 }

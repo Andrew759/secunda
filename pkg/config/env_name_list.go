@@ -1,0 +1,29 @@
+package config
+
+// database
+const (
+	DbHost         = "DB_HOST"
+	DbPort         = "DB_PORT"
+	DbInternalPort = "DB_INTERNAL_PORT"
+	DbName         = "DB_NAME"
+	DbUser         = "DB_USER"
+	DbPass         = "DB_PASS"
+	DbTimezone     = "DB_TIMEZONE"
+)
+
+// redis
+const (
+	RedisHost         = "REDIS_HOST"
+	RedisPort         = "REDIS_PORT"
+	RedisInternalPort = "REDIS_INTERNAL_PORT"
+	RedisDB           = "REDIS_DB"
+	RedisUser         = "REDIS_USER"
+	RedisPassword     = "REDIS_PASSWORD"
+)
+
+// token
+const (
+	SecretKey      = "SECRET_KEY"
+	AccessTokenLT  = "ACCESS_TOKEN_LT"
+	RefreshTokenLT = "REFRESH_TOKEN_LT"
+)

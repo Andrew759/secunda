@@ -3,9 +3,8 @@ package service
 import (
 	"database/sql"
 	"fmt"
+	"net/url"
 	"seconda/cmd/config"
-	"strconv"
-	"strings"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -16,7 +15,7 @@ type DBDecorator struct {
 	NativeInterface *sql.DB
 }
 
-func InitORM(config config.DataBaseConfigInterface) DBDecorator {
+func InitORM(config config.DataBaseConfigInterface) *DBDecorator {
 	dsn := dsn(config)
 
 	ORM, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
@@ -34,22 +33,23 @@ func InitORM(config config.DataBaseConfigInterface) DBDecorator {
 		NativeInterface: nativeDB,
 	}
 
-	return dbd
+	return &dbd
 }
 
 func dsn(config config.DataBaseConfigInterface) string {
-	dsn := []string{
-		"host=" + config.Host(),
-		"user=" + config.User(),
-		"password=" + config.Password(),
-		"dbname=" + config.Name(),
-		"port=" + strconv.Itoa(config.Port()),
-	}
-	if config.Timezone() != "" {
-		dsn = append(dsn, "TimeZone="+config.Timezone())
+	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true",
+		config.User(),
+		config.Password(),
+		config.Host(),
+		config.Port(),
+		config.Name(),
+	)
+
+	if tz := config.Timezone(); tz != "" {
+		dsn += "&loc=" + url.QueryEscape(tz)
 	}
 
-	return strings.Join(dsn, " ")
+	return dsn
 }
 
 func (dbd DBDecorator) CloseDB() {

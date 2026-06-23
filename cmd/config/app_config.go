@@ -1,7 +1,7 @@
 package config
 
 import (
-	config "seconda/pkg"
+	"seconda/pkg/config"
 
 	"github.com/spf13/viper"
 )
@@ -11,13 +11,22 @@ type AppConfigurationInterface interface {
 }
 
 type AppConfiguration struct {
-	Environment string
 	DatabaseConfig
+	RedisConfig
+}
+
+type RedisConfig struct {
+	Host     string
+	Port     int
+	User     string
+	Password string
+	Db       int
 }
 
 func (c AppConfiguration) NewAppConfiguration() AppConfiguration {
 	return AppConfiguration{
 		DatabaseConfig: PrepareDatabaseConfig(),
+		RedisConfig:    PrepareRedisConfig(),
 	}
 }
 
@@ -32,4 +41,16 @@ func PrepareDatabaseConfig() DatabaseConfig {
 	dbc.SetTimezone(viper.GetString(config.DbTimezone))
 
 	return dbc
+}
+
+func PrepareRedisConfig() RedisConfig {
+	rc := RedisConfig{}
+
+	rc.Host = viper.GetString(config.RedisHost)
+	rc.Port = viper.GetInt(config.RedisInternalPort)
+	rc.User = viper.GetString(config.RedisUser)
+	rc.Password = viper.GetString(config.RedisPassword)
+	rc.Db = viper.GetInt(config.RedisDB)
+
+	return rc
 }

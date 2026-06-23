@@ -16,7 +16,6 @@ type History struct {
 	ChangedByUser user.User `json:"changed_by_user" gorm:"foreignKey:changedBy;references:Id"`
 	CreatedAt     time.Time `json:"created_at" gorm:"type:timestamp;not null"`
 	UpdatedAt     time.Time `json:"updated_at" gorm:"type:timestamp;not null"`
-	DeletedAt     time.Time `json:"deleted_at" gorm:"type:timestamp;not null"`
 }
 
 var HistoryNotFoundErr = errors.New("task history not found")

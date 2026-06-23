@@ -19,5 +19,4 @@ RUN chmod +x /main
 
 EXPOSE 8080 2345
 
-# Запуск бинарника из корня с Delve
 CMD ["dlv", "--listen=:2345", "--headless=true", "--api-version=2", "--accept-multiclient", "exec", "/main", "--continue"]

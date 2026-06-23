@@ -9,10 +9,11 @@ import (
 
 type Type int
 
-// TODO: убедиться что роли будут такими
+// Роли
 const (
-	UserRole  Type = iota // Воскресенье = 0
-	OwnerRole             // Вторник = 1, iota автоматически инкрементируется
+	UserRole Type = iota // Воскресенье = 0
+	OwnerRole
+	AdminRole // Вторник = 1, iota автоматически инкрементируется
 )
 
 type Role struct {
@@ -22,7 +23,6 @@ type Role struct {
 	Role      Type      `json:"role" gorm:"type:int;not null"`
 	CreatedAt time.Time `json:"created_at" gorm:"type:timestamp;not null"`
 	UpdatedAt time.Time `json:"updated_at" gorm:"type:timestamp;not null"`
-	DeletedAt time.Time `json:"deleted_at" gorm:"type:timestamp;not null"`
 }
 
 var RoleNotFound = errors.New("role not found")
