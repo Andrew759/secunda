@@ -61,18 +61,6 @@ func CreateUser(db *gorm.DB, u *User) error {
 	return db.Create(u).Error
 }
 
-// GetUserById TODO: удалить, если не будет использоваться
-func GetUserById(db *gorm.DB, id int) (User, error) {
-	var user User
-	result := db.First(&user, id)
-
-	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		return User{}, NotFoundErr
-	}
-
-	return user, result.Error
-}
-
 func GetUserByLoginAndPass(db *gorm.DB, login, password string) (User, error) {
 	var user User
 

@@ -2,7 +2,7 @@ package task
 
 import (
 	"errors"
-	"os/user"
+	"seconda/internal/model/user"
 	"time"
 
 	"gorm.io/gorm"
@@ -13,7 +13,7 @@ type History struct {
 	TaskId        int       `json:"task_id" gorm:"type:int;not null;"`
 	Task          Task      `json:"task" gorm:"foreignKey:taskId;references:Id"`
 	ChangedBy     int       `json:"changed_by" gorm:"type:int;not null;"`
-	ChangedByUser user.User `json:"changed_by_user" gorm:"foreignKey:changedBy;references:Id"`
+	ChangedByUser user.User `json:"changed_by_user" gorm:"foreignKey:ChangedBy;references:Id"`
 	CreatedAt     time.Time `json:"created_at" gorm:"type:timestamp;not null"`
 	UpdatedAt     time.Time `json:"updated_at" gorm:"type:timestamp;not null"`
 }

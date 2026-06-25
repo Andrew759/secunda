@@ -2,7 +2,7 @@ package task
 
 import (
 	"errors"
-	"os/user"
+	"seconda/internal/model/user"
 	"time"
 
 	"gorm.io/gorm"

@@ -1,6 +1,5 @@
 package config
 
-// TODO: проверить совместимость postgres с MySQL
 type DataBaseConfigInterface interface {
 	Host() string
 	Port() int

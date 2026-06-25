@@ -31,11 +31,18 @@ func (ac *AuthController) HandleRequest() {
 }
 
 func (ac *AuthController) Register(c *gin.Context) {
-	var u user.User
-	if err := c.ShouldBindJSON(&u); err != nil {
+	var createUserRequest request.CreateUserRequest
+	if err := c.ShouldBindJSON(&createUserRequest); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input: " + err.Error()})
 		return
 	}
+
+	var u user.User
+	u.Phone = createUserRequest.Phone
+	u.Name = createUserRequest.Name
+	u.Surname = createUserRequest.Surname
+	u.Login = createUserRequest.Login
+	u.Password = createUserRequest.Password
 
 	if err := user.CreateUser(ac.Controller.DI.DBDecorator.GDB(), &u); err != nil &&
 		(errors.Is(err, user.WithLoginAlreadyExistsErr) || errors.Is(err, user.WithPhoneAlreadyExistsErr)) {
@@ -46,11 +53,19 @@ func (ac *AuthController) Register(c *gin.Context) {
 		return
 	}
 
+	var r user.Role
+	r.UserId = u.Id
+	r.Role = createUserRequest.Role
+
+	if err := user.CreateRole(ac.Controller.DI.DBDecorator.GDB(), &r); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user: " + err.Error()})
+		return
+	}
+
 	ctx := context.Background()
 	ctx, cancel := context.WithTimeout(ctx, 30*time.Minute)
 	defer cancel()
 
-	//TODO: подумать над передачей по ссылке
 	at, rt, err := service.CreateTokens(ctx, *ac.Controller.DI.RedisDecorator, strconv.Itoa(u.Id))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user token: " + err.Error()})
@@ -58,7 +73,6 @@ func (ac *AuthController) Register(c *gin.Context) {
 	}
 
 	c.SetCookie("access_token", at.Token, int(at.Lt.Seconds()), "/", "", false, true)
-	//TODO: оставить что-то одно
 	c.SetCookie("refresh_token", rt.Token, int(rt.Lt.Seconds()), "/auth/refresh", "", false, true)
 	c.SetCookie("refresh_jti", rt.Jti, int(rt.Lt.Seconds()), "/auth/refresh-jti", "", false, true)
 
@@ -66,10 +80,15 @@ func (ac *AuthController) Register(c *gin.Context) {
 }
 
 func (ac *AuthController) Login(c *gin.Context) {
-	tokenStr, err := c.Cookie("access_token")
-	if err != nil && err.Error() != "http: named cookie not present" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "token not found"})
-		return
+	useCookie := c.DefaultQuery("use_cookie_only", "false")
+	tokenStr := ""
+	if useCookie == "true" {
+		var err error
+		tokenStr, err = c.Cookie("access_token")
+		if err != nil && err.Error() != "http: named cookie not present" {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "token not found"})
+			return
+		}
 	}
 
 	if tokenStr == "" {
@@ -81,7 +100,7 @@ func (ac *AuthController) Login(c *gin.Context) {
 
 		u, err := user.GetUserByLoginAndPass(ac.Controller.DI.DBDecorator.GDB(), ulr.Login, ulr.Password)
 		if err != nil && errors.Is(err, user.NotFoundErr) {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
 		} else if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
@@ -94,7 +113,7 @@ func (ac *AuthController) Login(c *gin.Context) {
 
 		stringCMD := ac.Controller.DI.RedisDecorator.Client.Get(ctx, strconv.Itoa(u.Id))
 		if stringCMD.Err() != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "expired or not exist token"})
 			return
 		}
 		tokenStr = stringCMD.Val()

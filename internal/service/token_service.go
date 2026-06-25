@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"errors"
 	"seconda/cmd/service"
 	"seconda/internal/dto"
 	"seconda/pkg/config"
@@ -14,12 +13,6 @@ import (
 )
 
 const ISS = "token_service"
-
-// TODO: удалить, если не будет использоваться
-var (
-	TokenInvalidErr = errors.New("token is invalid")
-	TokenExpiredErr = errors.New("token has expired or revoked")
-)
 
 type Claims struct {
 	UserId string `json:"user_id"`
@@ -90,9 +83,9 @@ func createRefreshToken(userId string) (string, string, error) {
 	return token, jti, err
 }
 
-// Logout удаляет токен из Redis
+// Logout удаляет токен из Redis TODO: удалить метод, если не успею использовать в тестовом
 func Logout(ctx context.Context, redisDec service.RedisDecorator, refreshTokenStr string) error {
-	token, _ := jwt.ParseWithClaims(refreshTokenStr, &Claims{}, func(t *jwt.Token) (interface{}, error) {
+	token, _ := jwt.ParseWithClaims(refreshTokenStr, &Claims{}, func(t *jwt.Token) (any, error) {
 		return []byte(viper.GetString(config.SecretKey)), nil
 	})
 

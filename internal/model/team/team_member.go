@@ -19,11 +19,27 @@ type Member struct {
 
 var MemberNotFoundErr = errors.New("team member not found")
 
+var WithUserIdAlreadyExistErr = errors.New("user with id already exist")
+
+var WithTeamIdAlreadyExistErr = errors.New("user with team id already exist")
+
 func (tm Member) TableName() string {
 	return "team_members"
 }
 
 func CreateMember(db *gorm.DB, m *Member) error {
+	var existing Member
+	err := db.Where("user_id = ? AND team_id = ?", m.UserId, m.TeamId).First(&existing).Error
+
+	if err == nil {
+		if existing.UserId == m.UserId {
+			return WithUserIdAlreadyExistErr
+		}
+		if existing.TeamId == m.TeamId {
+			return WithTeamIdAlreadyExistErr
+		}
+		return err
+	}
 	return db.Create(m).Error
 }
 
