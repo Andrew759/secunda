@@ -1,6 +1,7 @@
 package user
 
 import (
+	"context"
 	"errors"
 	"time"
 
@@ -38,9 +39,10 @@ func passwordHash(password string) (string, error) {
 	return string(passHash), nil
 }
 
-func CreateUser(db *gorm.DB, u *User) error {
+func CreateUser(ctx context.Context, db *gorm.DB, u *User) error {
 	var existing User
-	err := db.Where("login = ? OR phone = ?", u.Login, u.Phone).First(&existing).Error
+
+	err := db.WithContext(ctx).Where("login = ? OR phone = ?", u.Login, u.Phone).First(&existing).Error
 
 	if err == nil {
 		if existing.Login == u.Login {
@@ -52,39 +54,35 @@ func CreateUser(db *gorm.DB, u *User) error {
 		return err
 	}
 
+	if errors.Is(err, context.Canceled) {
+		return err
+	}
+
 	password, err := passwordHash(u.Password)
 	if err != nil {
 		return err
 	}
 	u.Password = password
 
-	return db.Create(u).Error
+	return db.WithContext(ctx).Create(u).Error
 }
 
-// GetUserById TODO: удалить, если не будет использоваться
-func GetUserById(db *gorm.DB, id int) (User, error) {
+func GetUserByLoginAndPass(ctx context.Context, db *gorm.DB, login, password string) (User, error) {
 	var user User
-	result := db.First(&user, id)
 
-	if errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		return User{}, NotFoundErr
+	result := db.WithContext(ctx).Where("login = ?", login).First(&user)
+
+	if result.Error != nil {
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			return user, NotFoundErr
+		}
+		return user, result.Error
 	}
 
-	return user, result.Error
-}
-
-func GetUserByLoginAndPass(db *gorm.DB, login, password string) (User, error) {
-	var user User
-
-	result := db.Where("login = ?", login).First(&user)
 	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
 	if err != nil {
 		return user, err
 	}
 
-	if result.Error != nil && errors.Is(result.Error, gorm.ErrRecordNotFound) {
-		return user, NotFoundErr
-	}
-
-	return user, result.Error
+	return user, nil
 }

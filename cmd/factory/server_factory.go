@@ -4,14 +4,27 @@ import (
 	"seconda/cmd/base"
 	"seconda/cmd/service"
 	"seconda/internal/controller/auth"
+	taskService "seconda/internal/controller/task"
+	"seconda/internal/controller/team"
+	"seconda/internal/model/task"
+	"seconda/internal/model/user"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gin-gonic/gin/binding"
+	"github.com/go-playground/validator/v10"
 )
 
 func BuildAndServe(dbDecorator *service.DBDecorator, redisDecorator *service.RedisDecorator) error {
 	e := gin.Default()
 
-	initAuthService(e, &base.DIContainer{DBDecorator: dbDecorator, RedisDecorator: redisDecorator})
+	RegisterRoleValidator()
+	RegisterStatusValidator()
+
+	diContainer := &base.DIContainer{DBDecorator: dbDecorator, RedisDecorator: redisDecorator}
+
+	initAuthService(e, diContainer)
+	initTeamsService(e, diContainer)
+	InitTasksService(e, diContainer)
 
 	err := e.Run()
 	if err != nil {
@@ -29,4 +42,51 @@ func initAuthService(e *gin.Engine, aDIC *base.DIContainer) {
 		},
 	}
 	authService.HandleRequest()
+}
+
+func initTeamsService(e *gin.Engine, aDIC *base.DIContainer) {
+	teamController := team.TeamController{
+		Controller: base.Controller{
+			E:  e,
+			DI: aDIC,
+		},
+	}
+	teamController.HandleRequest()
+}
+
+func InitTasksService(e *gin.Engine, aDIC *base.DIContainer) {
+	taskController := taskService.TaskController{
+		Controller: base.Controller{
+			E:  e,
+			DI: aDIC,
+		},
+	}
+	taskController.HandleRequest()
+}
+
+// RegisterRoleValidator регистрирует валидатор глобально для всего движка Gin.
+func RegisterRoleValidator() bool {
+	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		err := v.RegisterValidation("enum_role", func(fl validator.FieldLevel) bool {
+			if val, ok := fl.Field().Interface().(user.Type); ok {
+				return val.IsValid()
+			}
+			return false
+		})
+		return err == nil
+	}
+	return false
+}
+
+func RegisterStatusValidator() bool {
+	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
+		err := v.RegisterValidation("task_status", func(fl validator.FieldLevel) bool {
+			if val, ok := fl.Field().Interface().(task.Status); ok {
+				return val.IsValid()
+			}
+			return false
+		})
+		return err == nil
+	}
+	return false
 }
