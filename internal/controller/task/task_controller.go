@@ -67,6 +67,18 @@ func (tc *TaskController) CreateTask(c *gin.Context) {
 		return
 	}
 
+	if ctr.Comment != nil {
+		var tComment task.Comment
+		tComment.TaskId = t.Id
+		tComment.UserId = t.CreatedBy
+		tComment.Comment = *ctr.Comment
+
+		err = task.CreateComment(ctx, tc.Controller.DI.DBDecorator.GDB(), &tComment)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+	}
+
 	c.JSON(http.StatusOK, t)
 }
 
@@ -193,6 +205,18 @@ func (tc *TaskController) UpdateTask(c *gin.Context) {
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+
+	if utr.Comment != nil {
+		var tComment task.Comment
+		tComment.TaskId = nt.Id
+		tComment.UserId = nt.CreatedBy
+		tComment.Comment = *utr.Comment
+
+		err = task.CreateComment(ctx, tc.Controller.DI.DBDecorator.GDB(), &tComment)
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
 	}
 
 	var h task.History
