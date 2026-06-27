@@ -1,6 +1,7 @@
 package team
 
 import (
+	"context"
 	"errors"
 	"seconda/internal/model/user"
 	"time"
@@ -25,9 +26,10 @@ func (t Team) TableName() string {
 	return "teams"
 }
 
-func CreateTeam(db *gorm.DB, t *Team) error {
+func CreateTeam(ctx context.Context, db *gorm.DB, t *Team) error {
 	var existing Team
-	err := db.Where("name = ? OR created_by = ?", t.Name, t.CreatedBy).First(&existing).Error
+
+	err := db.WithContext(ctx).Where("name = ? AND created_by = ?", t.Name, t.CreatedBy).First(&existing).Error
 
 	if err == nil {
 		if existing.Name == t.Name && existing.CreatedBy == t.CreatedBy {
@@ -35,12 +37,13 @@ func CreateTeam(db *gorm.DB, t *Team) error {
 		}
 		return err
 	}
-	return db.Create(t).Error
+
+	return db.WithContext(ctx).Create(t).Error
 }
 
-func GetTeamById(db *gorm.DB, id int) (Team, error) {
+func GetTeamById(ctx context.Context, db *gorm.DB, id int) (Team, error) {
 	var team Team
-	err := db.Where("id = ?", id).First(&team).Error
+	err := db.WithContext(ctx).Where("id = ?", id).First(&team).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return Team{}, NotFoundErr
 	}
@@ -48,18 +51,11 @@ func GetTeamById(db *gorm.DB, id int) (Team, error) {
 	return team, err
 }
 
-func GetTeamsByUserId(db *gorm.DB, userId int) ([]Team, error) {
+func GetTeamsWhereUserIsMember(ctx context.Context, db *gorm.DB, userId int) ([]Team, error) {
 	var teams []Team
-	err := db.Where("created_by = ?", userId).Find(&teams).Error
-	if errors.Is(err, gorm.ErrRecordNotFound) {
-		return nil, NotFoundErr
-	}
-	return teams, err
-}
 
-func GetTeamsWhereUserIsMember(db *gorm.DB, userId int) ([]Team, error) {
-	var teams []Team
-	err := db.Joins("JOIN team_members ON team_members.team_id = teams.id").
+	err := db.WithContext(ctx).
+		Joins("JOIN team_members ON team_members.team_id = teams.id").
 		Where("team_members.user_id = ?", userId).
 		Find(&teams).Error
 

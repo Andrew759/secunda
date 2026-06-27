@@ -29,6 +29,8 @@ func (tc *TeamController) HandleRequest() {
 }
 
 func (tc *TeamController) CreateTeams(c *gin.Context) {
+	ctx := c.Request.Context()
+
 	var ctr request.CreateTeamRequest
 	if err := c.ShouldBindJSON(&ctr); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input: " + err.Error()})
@@ -40,11 +42,12 @@ func (tc *TeamController) CreateTeams(c *gin.Context) {
 	userId, exist := c.Get("user_id")
 	if !exist {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token user id"})
+		return
 	}
 	userIdI, _ := strconv.Atoi(userId.(string))
 	t.CreatedBy = userIdI
 
-	if err := team.CreateTeam(tc.Controller.DI.DBDecorator.GDB(), &t); err != nil {
+	if err := team.CreateTeam(ctx, tc.Controller.DI.DBDecorator.GDB(), &t); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create team: " + err.Error()})
 		return
 	}
@@ -53,6 +56,8 @@ func (tc *TeamController) CreateTeams(c *gin.Context) {
 }
 
 func (tc *TeamController) Teams(c *gin.Context) {
+	ctx := c.Request.Context()
+
 	userId, exist := c.Get("user_id")
 	if !exist {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token user id"})
@@ -60,7 +65,7 @@ func (tc *TeamController) Teams(c *gin.Context) {
 	}
 	userIdI, _ := strconv.Atoi(userId.(string))
 
-	teams, err := team.GetTeamsWhereUserIsMember(tc.Controller.DI.DBDecorator.GDB(), userIdI)
+	teams, err := team.GetTeamsWhereUserIsMember(ctx, tc.Controller.DI.DBDecorator.GDB(), userIdI)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get teams: " + err.Error()})
 		return
@@ -70,6 +75,8 @@ func (tc *TeamController) Teams(c *gin.Context) {
 }
 
 func (tc *TeamController) Invite(c *gin.Context) {
+	ctx := c.Request.Context()
+
 	var ittr request.InviteToTeamRequest
 	if err := c.ShouldBindJSON(&ittr); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input: " + err.Error()})
@@ -83,13 +90,13 @@ func (tc *TeamController) Invite(c *gin.Context) {
 	}
 	userIdI, _ := strconv.Atoi(userId.(string))
 
-	idStr := c.Param("id")
-	id, err := strconv.Atoi(idStr)
+	teamIdStr := c.Param("id")
+	teamId, err := strconv.Atoi(teamIdStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
-	t, err := team.GetTeamById(tc.Controller.DI.DBDecorator.GDB(), id)
+	t, err := team.GetTeamById(ctx, tc.Controller.DI.DBDecorator.GDB(), teamId)
 	if err != nil && errors.Is(err, team.NotFoundErr) {
 		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		return
@@ -98,7 +105,7 @@ func (tc *TeamController) Invite(c *gin.Context) {
 		return
 	}
 
-	roles, err := user.GetRolesByUserId(tc.Controller.DI.DBDecorator.GDB(), userIdI)
+	roles, err := user.GetRolesByUserId(ctx, tc.Controller.DI.DBDecorator.GDB(), userIdI)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 	}
@@ -116,10 +123,10 @@ func (tc *TeamController) Invite(c *gin.Context) {
 
 	var m team.Member
 	m.UserId = ittr.UserId
-	m.TeamId = ittr.TeamId
+	m.TeamId = teamId
 
-	err = team.CreateMember(tc.Controller.DI.DBDecorator.GDB(), &m)
-	if err != nil && errors.Is(err, team.WithUserIdAlreadyExistErr) || errors.Is(err, user.WithLoginAlreadyExistsErr) {
+	err = team.CreateMember(ctx, tc.Controller.DI.DBDecorator.GDB(), &m)
+	if err != nil && errors.Is(err, team.MemberAlreadyExist) {
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		return
 	} else if err != nil {

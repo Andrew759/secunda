@@ -1,6 +1,7 @@
 package task
 
 import (
+	"context"
 	"errors"
 	"seconda/internal/model/user"
 	"time"
@@ -25,16 +26,16 @@ func (c Comment) TableName() string {
 	return "task_comments"
 }
 
-func CreateComment(db *gorm.DB, c *Comment) error {
-	return db.Create(c).Error
+func CreateComment(ctx context.Context, db *gorm.DB, c *Comment) error {
+	return db.WithContext(ctx).Create(c).Error
 }
 
-func GetCommentById(db *gorm.DB, id int) (Comment, error) {
+func GetCommentById(ctx context.Context, db *gorm.DB, id int) (Comment, error) {
 	var c Comment
-	err := db.Where("id = ?", id).First(&c).Error
+	err := db.WithContext(ctx).Where("id = ?", id).First(&c).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return Comment{}, CommentNotFoundErr
 	}
 
-	return c, nil
+	return c, err
 }

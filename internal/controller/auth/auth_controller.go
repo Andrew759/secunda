@@ -31,6 +31,8 @@ func (ac *AuthController) HandleRequest() {
 }
 
 func (ac *AuthController) Register(c *gin.Context) {
+	ctx := c.Request.Context()
+
 	var createUserRequest request.CreateUserRequest
 	if err := c.ShouldBindJSON(&createUserRequest); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid input: " + err.Error()})
@@ -44,7 +46,7 @@ func (ac *AuthController) Register(c *gin.Context) {
 	u.Login = createUserRequest.Login
 	u.Password = createUserRequest.Password
 
-	if err := user.CreateUser(ac.Controller.DI.DBDecorator.GDB(), &u); err != nil &&
+	if err := user.CreateUser(ctx, ac.Controller.DI.DBDecorator.GDB(), &u); err != nil &&
 		(errors.Is(err, user.WithLoginAlreadyExistsErr) || errors.Is(err, user.WithPhoneAlreadyExistsErr)) {
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		return
@@ -57,16 +59,17 @@ func (ac *AuthController) Register(c *gin.Context) {
 	r.UserId = u.Id
 	r.Role = createUserRequest.Role
 
-	if err := user.CreateRole(ac.Controller.DI.DBDecorator.GDB(), &r); err != nil {
+	if err := user.CreateRole(ctx, ac.Controller.DI.DBDecorator.GDB(), &r); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user: " + err.Error()})
 		return
 	}
 
-	ctx := context.Background()
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Minute)
+	ctxR := context.Background()
+	//TODO: прокинуть время из env
+	ctxR, cancel := context.WithTimeout(ctx, 30*time.Minute)
 	defer cancel()
 
-	at, rt, err := service.CreateTokens(ctx, *ac.Controller.DI.RedisDecorator, strconv.Itoa(u.Id))
+	at, rt, err := service.CreateTokens(ctxR, *ac.Controller.DI.RedisDecorator, strconv.Itoa(u.Id))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user token: " + err.Error()})
 		return
@@ -80,6 +83,8 @@ func (ac *AuthController) Register(c *gin.Context) {
 }
 
 func (ac *AuthController) Login(c *gin.Context) {
+	ctx := c.Request.Context()
+
 	useCookie := c.DefaultQuery("use_cookie_only", "false")
 	tokenStr := ""
 	if useCookie == "true" {
@@ -98,7 +103,7 @@ func (ac *AuthController) Login(c *gin.Context) {
 			return
 		}
 
-		u, err := user.GetUserByLoginAndPass(ac.Controller.DI.DBDecorator.GDB(), ulr.Login, ulr.Password)
+		u, err := user.GetUserByLoginAndPass(ctx, ac.Controller.DI.DBDecorator.GDB(), ulr.Login, ulr.Password)
 		if err != nil && errors.Is(err, user.NotFoundErr) {
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
@@ -117,6 +122,10 @@ func (ac *AuthController) Login(c *gin.Context) {
 			return
 		}
 		tokenStr = stringCMD.Val()
+
+		//TODO: уязвимость в связи с обновлением времени жизни токена
+		redisTokenLT := viper.GetDuration(config.AccessTokenLT)
+		c.SetCookie("access_token", tokenStr, int(redisTokenLT), "/", "", false, true)
 	}
 
 	claims := &service.Claims{}

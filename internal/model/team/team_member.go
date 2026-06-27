@@ -1,6 +1,7 @@
 package team
 
 import (
+	"context"
 	"errors"
 	"seconda/internal/model/user"
 	"time"
@@ -19,33 +20,31 @@ type Member struct {
 
 var MemberNotFoundErr = errors.New("team member not found")
 
-var WithUserIdAlreadyExistErr = errors.New("user with id already exist")
-
-var WithTeamIdAlreadyExistErr = errors.New("user with team id already exist")
+var MemberAlreadyExist = errors.New("member already exist")
 
 func (tm Member) TableName() string {
 	return "team_members"
 }
 
-func CreateMember(db *gorm.DB, m *Member) error {
+func CreateMember(ctx context.Context, db *gorm.DB, m *Member) error {
 	var existing Member
-	err := db.Where("user_id = ? AND team_id = ?", m.UserId, m.TeamId).First(&existing).Error
+
+	err := db.WithContext(ctx).Where("user_id = ? AND team_id = ?", m.UserId, m.TeamId).First(&existing).Error
 
 	if err == nil {
-		if existing.UserId == m.UserId {
-			return WithUserIdAlreadyExistErr
-		}
-		if existing.TeamId == m.TeamId {
-			return WithTeamIdAlreadyExistErr
+		if existing.UserId == m.UserId && existing.TeamId == m.TeamId {
+			return MemberAlreadyExist
 		}
 		return err
 	}
-	return db.Create(m).Error
+
+	return db.WithContext(ctx).Create(m).Error
 }
 
-func GetMemberById(db *gorm.DB, id int) (Member, error) {
+func GetMemberByUserIdAndTeamId(ctx context.Context, db *gorm.DB, userId int, teamId int) (Member, error) {
 	var member Member
-	err := db.Where("id = ?", id).First(&member).Error
+
+	err := db.WithContext(ctx).Where("user_id = ? AND team_id = ?", userId, teamId).First(&member).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		return Member{}, MemberNotFoundErr
 	}
