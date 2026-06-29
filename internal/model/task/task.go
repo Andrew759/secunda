@@ -37,6 +37,8 @@ type Filter struct {
 	TeamId     int
 	Status     int
 	AssigneeId int
+	Limit      int
+	Offset     int
 }
 
 func CreateTask(ctx context.Context, db *gorm.DB, t *Task) error {
@@ -100,6 +102,15 @@ func GetTasksByFilter(ctx context.Context, db *gorm.DB, filter Filter) ([]Task, 
 	}
 
 	query += " ORDER BY t.created_at DESC"
+
+	if filter.Limit > 0 {
+		query += " LIMIT ?"
+		args = append(args, filter.Limit)
+	}
+	if filter.Offset > 0 {
+		query += " OFFSET ?"
+		args = append(args, filter.Offset)
+	}
 
 	err := db.WithContext(ctx).Raw(query, args...).Scan(&tasks).Error
 	if err != nil {

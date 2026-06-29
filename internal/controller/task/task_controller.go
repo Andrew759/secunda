@@ -142,6 +142,22 @@ func (tc *TaskController) Tasks(c *gin.Context) {
 		}
 	}
 
+	limitStr := c.DefaultQuery("limit", "10") // Значение по умолчанию: 10
+	limit, err := strconv.Atoi(limitStr)
+	if err != nil || limit <= 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid limit parameter"})
+		return
+	}
+	filter.Limit = limit
+
+	offsetStr := c.DefaultQuery("offset", "0")
+	offset, err := strconv.Atoi(offsetStr)
+	if err != nil || offset < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid offset parameter"})
+		return
+	}
+	filter.Offset = offset
+
 	if filter.TeamId > 0 {
 		_, err = team.GetMemberByUserIdAndTeamId(ctx, tc.Controller.DI.DBDecorator.GDB(), userIdI, filter.TeamId)
 		if err != nil && errors.Is(err, team.MemberNotFoundErr) {
@@ -153,7 +169,7 @@ func (tc *TaskController) Tasks(c *gin.Context) {
 		}
 	}
 
-	cacheKey := fmt.Sprintf("tasks:cache:t%d:a%d:s%d", filter.TeamId, filter.AssigneeId, filter.Status)
+	cacheKey := fmt.Sprintf("tasks:cache:t%d:a%d:s%d:l%d:o%d", filter.TeamId, filter.AssigneeId, filter.Status, filter.Limit, filter.Offset)
 
 	cachedTasks, err := tc.Controller.DI.RedisDecorator.Client.Get(ctx, cacheKey).Result()
 	if err == nil {
