@@ -15,7 +15,7 @@ func main() {
 	dbDecorator := service.InitORM(&appConfig.DatabaseConfig)
 	defer dbDecorator.CloseDB()
 
-	redisDecorator := service.InitRedis(appConfig.RedisConfig)
+	redisDecorator := service.InitRedis(&appConfig.RedisConfig)
 	defer redisDecorator.RedisClose()
 
 	err := factory.BuildAndServe(dbDecorator, redisDecorator)
