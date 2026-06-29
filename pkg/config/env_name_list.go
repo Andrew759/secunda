@@ -27,3 +27,5 @@ const (
 	AccessTokenLT  = "ACCESS_TOKEN_LT"
 	RefreshTokenLT = "REFRESH_TOKEN_LT"
 )
+
+const TeamResultLT = "TEAM_RESULT_LT"

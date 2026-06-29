@@ -1,7 +1,10 @@
 package team
 
 import (
+	"bytes"
+	"encoding/csv"
 	"errors"
+	"fmt"
 	"net/http"
 	"seconda/cmd/base"
 	"seconda/internal/middleware"
@@ -9,6 +12,7 @@ import (
 	"seconda/internal/model/user"
 	"seconda/internal/request"
 	"strconv"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -26,6 +30,7 @@ func (tc *TeamController) HandleRequest() {
 	group.POST("/teams", tc.CreateTeams)
 	group.GET("/teams", tc.Teams)
 	group.POST("/teams/:id/invite", tc.Invite)
+	group.GET("/teams/report", tc.GetTeamsReportCSV)
 }
 
 func (tc *TeamController) CreateTeams(c *gin.Context) {
@@ -135,4 +140,55 @@ func (tc *TeamController) Invite(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, m)
+}
+
+func (tc *TeamController) GetTeamsReportCSV(c *gin.Context) {
+	ctx := c.Request.Context()
+
+	_, exist := c.Get("user_id")
+	if !exist {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token user id"})
+		return
+	}
+
+	reports, err := team.GetTeamsActivityReport(ctx, tc.Controller.DI.DBDecorator.GDB())
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	buf := new(bytes.Buffer)
+	writer := csv.NewWriter(buf)
+
+	headers := []string{"Team ID", "Team Name", "Members Count", "Done Tasks (Last 7 Days)"}
+	if err := writer.Write(headers); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to write CSV headers: " + err.Error()})
+		return
+	}
+
+	for _, report := range reports {
+		row := []string{
+			strconv.Itoa(report.TeamId),
+			report.TeamName,
+			strconv.Itoa(report.MembersCount),
+			strconv.Itoa(report.DoneTasksCount),
+		}
+		if err := writer.Write(row); err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to write CSV data: " + err.Error()})
+			return
+		}
+	}
+
+	writer.Flush()
+	if err := writer.Error(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to flush CSV writer: " + err.Error()})
+		return
+	}
+
+	fileName := fmt.Sprintf("teams_activity_report_%s.csv", time.Now().Format("2006-01-02"))
+	c.Header("Content-Description", "File Transfer")
+	c.Header("Content-Disposition", fmt.Sprintf("attachment; filename=%s", fileName))
+	c.Header("Content-Type", "text/csv; charset=utf-8")
+
+	c.Data(http.StatusOK, "text/csv", buf.Bytes())
 }

@@ -15,7 +15,7 @@ type User struct {
 	Name      string    `json:"name" gorm:"type:varchar(256);not null" binding:"required,min=1,max=256"`
 	Surname   string    `json:"surname" gorm:"type:varchar(256);not null" binding:"required,min=1,max=256"`
 	Login     string    `json:"login" gorm:"type:varchar(256);unique; not null" binding:"required,min=1,max=256"`
-	Password  string    `json:"password" gorm:"type:varchar(256)" binding:"required,min=5,max=256"`
+	Password  string    `json:"-" gorm:"type:varchar(256)" binding:"required,min=5,max=256"`
 	CreatedAt time.Time `json:"created_at" gorm:"type:timestamp;not null"`
 	UpdatedAt time.Time `json:"updated_at" gorm:"type:timestamp;not null"`
 }

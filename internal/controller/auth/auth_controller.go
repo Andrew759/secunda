@@ -65,8 +65,7 @@ func (ac *AuthController) Register(c *gin.Context) {
 	}
 
 	ctxR := context.Background()
-	//TODO: прокинуть время из env
-	ctxR, cancel := context.WithTimeout(ctx, 30*time.Minute)
+	ctxR, cancel := context.WithTimeout(ctx, viper.GetDuration(config.AccessTokenLT))
 	defer cancel()
 
 	at, rt, err := service.CreateTokens(ctxR, *ac.Controller.DI.RedisDecorator, strconv.Itoa(u.Id))

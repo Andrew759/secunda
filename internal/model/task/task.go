@@ -3,6 +3,7 @@ package task
 import (
 	"context"
 	"errors"
+	"seconda/internal/enum"
 	"seconda/internal/model/team"
 	"seconda/internal/model/user"
 	"time"
@@ -11,30 +12,17 @@ import (
 )
 
 type Task struct {
-	Id            int       `json:"id" gorm:"type:int;not null;primaryKey;autoIncrement"`
-	AssigneeId    int       `json:"assignee_id" gorm:"type:int;not null;"`
-	AssigneeUser  user.User `json:"assignee_user" gorm:"foreignKey:AssigneeId;references:Id"`
-	TeamId        int       `json:"team_id" gorm:"type:int;not null;"`
-	Team          team.Team `json:"team" gorm:"foreignKey:TeamId;references:Id"`
-	CreatedBy     int       `json:"created_by" gorm:"type:int;not null;"`
-	CreatedByUser user.User `json:"created_by_user" gorm:"foreignKey:CreatedBy;references:Id"`
-	Name          string    `json:"name" gorm:"type:varchar(256);not null;"`
-	CreatedAt     time.Time `json:"created_at" gorm:"type:timestamp;not null"`
-	UpdatedAt     time.Time `json:"updated_at" gorm:"type:timestamp;not null"`
-	Status        Status    `json:"status" gorm:"type:int;not null;"`
-}
-type Status int
-
-// Статусы задачи
-const (
-	Draft Status = iota + 1
-	Todo
-	InProgress
-	Done
-)
-
-func (s Status) IsValid() bool {
-	return s >= Draft && s <= Done
+	Id            int         `json:"id" gorm:"type:int;not null;primaryKey;autoIncrement"`
+	AssigneeId    int         `json:"assignee_id" gorm:"type:int;not null;"`
+	AssigneeUser  user.User   `json:"assignee_user" gorm:"foreignKey:AssigneeId;references:Id"`
+	TeamId        int         `json:"team_id" gorm:"type:int;not null;"`
+	Team          team.Team   `json:"team" gorm:"foreignKey:TeamId;references:Id"`
+	CreatedBy     int         `json:"created_by" gorm:"type:int;not null;"`
+	CreatedByUser user.User   `json:"created_by_user" gorm:"foreignKey:CreatedBy;references:Id"`
+	Name          string      `json:"name" gorm:"type:varchar(256);not null;"`
+	CreatedAt     time.Time   `json:"created_at" gorm:"type:timestamp;not null"`
+	UpdatedAt     time.Time   `json:"updated_at" gorm:"type:timestamp;not null"`
+	Status        enum.Status `json:"status" gorm:"type:int;not null;"`
 }
 
 var NotFoundErr = errors.New("task not found")

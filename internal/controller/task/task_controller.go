@@ -1,16 +1,23 @@
 package task
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
+	"log/slog"
 	"net/http"
 	"seconda/cmd/base"
+	"seconda/internal/enum"
 	"seconda/internal/middleware"
 	"seconda/internal/model/task"
 	"seconda/internal/model/team"
 	"seconda/internal/request"
+	"seconda/pkg/config"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
+	"github.com/spf13/viper"
 )
 
 type TaskController struct {
@@ -121,14 +128,14 @@ func (tc *TaskController) Tasks(c *gin.Context) {
 
 	if status != 0 {
 		switch status {
-		case int(task.Draft):
-			filter.Status = int(task.Draft)
-		case int(task.Todo):
-			filter.Status = int(task.Todo)
-		case int(task.InProgress):
-			filter.Status = int(task.InProgress)
-		case int(task.Done):
-			filter.Status = int(task.Done)
+		case int(enum.Draft):
+			filter.Status = int(enum.Draft)
+		case int(enum.Todo):
+			filter.Status = int(enum.Todo)
+		case int(enum.InProgress):
+			filter.Status = int(enum.InProgress)
+		case int(enum.Done):
+			filter.Status = int(enum.Done)
 		default:
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid status parameter"})
 			return
@@ -146,6 +153,19 @@ func (tc *TaskController) Tasks(c *gin.Context) {
 		}
 	}
 
+	cacheKey := fmt.Sprintf("tasks:cache:t%d:a%d:s%d", filter.TeamId, filter.AssigneeId, filter.Status)
+
+	cachedTasks, err := tc.Controller.DI.RedisDecorator.Client.Get(ctx, cacheKey).Result()
+	if err == nil {
+		var tasks []task.Task
+		if err := json.Unmarshal([]byte(cachedTasks), &tasks); err == nil {
+			c.JSON(http.StatusOK, tasks)
+			return
+		}
+	} else if !errors.Is(err, redis.Nil) {
+		slog.Warn(err.Error())
+	}
+
 	tasks, err := task.GetTasksByFilter(ctx, tc.Controller.DI.DBDecorator.GDB(), filter)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch tasks: " + err.Error()})
@@ -154,6 +174,11 @@ func (tc *TaskController) Tasks(c *gin.Context) {
 
 	if tasks == nil {
 		tasks = []task.Task{}
+	}
+
+	jsonData, err := json.Marshal(tasks)
+	if err == nil {
+		_ = tc.Controller.DI.RedisDecorator.Client.Set(ctx, cacheKey, jsonData, viper.GetDuration(config.TeamResultLT)).Err()
 	}
 
 	c.JSON(http.StatusOK, tasks)
