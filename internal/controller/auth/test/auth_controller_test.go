@@ -1,6 +1,7 @@
 package test
 
 import (
+	"encoding/json"
 	"net/http"
 	base "seconda/internal/controller/test"
 	"testing"
@@ -20,28 +21,26 @@ func TestCreateUserSuccess(t *testing.T) {
 		"Role": 1
 	}`)
 
-	_, statusCode := tc.SendPost(body, "/api/v1/register")
+	respBytes, statusCode := tc.SendPost(body, "/api/v1/register")
+
+	expectedJSON := `{
+		"id": 1,
+		"phone": "+79634823344",
+		"name": "Андрей",
+		"surname": "Вельков",
+		"login": "avelkov"
+	}`
+
+	var expectedMap map[string]any
+	json.Unmarshal([]byte(expectedJSON), &expectedMap)
+
+	var actualMap map[string]any
+	json.Unmarshal(respBytes, &actualMap)
+
+	//Не сравниваемые поля
+	delete(actualMap, "created_at")
+	delete(actualMap, "updated_at")
 
 	assert.Equal(t, http.StatusCreated, statusCode)
-
-	//expectedJSON := `{
-	//	"phone": "+79634823344",
-	//	"name": "Андрей",
-	//	"surname": "Вельков",
-	//	"login": "avelkov",
-	//	"password": "pass1",
-	//	"Role": 1
-	//}`
-	//
-	//var expectedMap map[string]any
-	//if err := json.Unmarshal([]byte(expectedJSON), &expectedMap); err != nil {
-	//	t.Fatalf("Ошибка парсинга ожидаемого JSON: %v", err)
-	//}
-	//
-	//var actualMap map[string]any
-	//if err := json.Unmarshal(respBytes, &actualMap); err != nil {
-	//	t.Fatalf("Ошибка парсинга ответа сервера: %v. Сырой ответ: %s", err, string(respBytes))
-	//}
-	//
-	//assert.Equal(t, expectedMap, actualMap)
+	assert.Equal(t, expectedMap, actualMap)
 }
