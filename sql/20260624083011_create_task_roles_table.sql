@@ -8,8 +8,8 @@ create table roles
     role       bigint    not null,
     created_at timestamp not null,
     updated_at timestamp not null,
-    constraint uni_roles_user_id
-        unique (user_id),
+    constraint uni_roles_id
+        unique (id),
     constraint fk_roles_user
         foreign key (user_id) references users (id)
 );

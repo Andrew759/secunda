@@ -3,6 +3,7 @@ package team
 import (
 	"context"
 	"errors"
+	"seconda/internal/enum"
 	"seconda/internal/model/user"
 	"time"
 
@@ -16,6 +17,13 @@ type Team struct {
 	CreatedByUser *user.User `json:"created_by_user" gorm:"foreignKey:CreatedBy;references:Id"`
 	CreatedAt     time.Time  `json:"created_at" gorm:"type:timestamp;not null"`
 	UpdatedAt     time.Time  `json:"updated_at" gorm:"type:timestamp;not null"`
+}
+
+type Report struct {
+	TeamId         int    `json:"team_id" gorm:"column:team_id"`
+	TeamName       string `json:"team_name" gorm:"column:team_name"`
+	MembersCount   int    `json:"members_count" gorm:"column:members_count"`
+	DoneTasksCount int    `json:"done_tasks_count" gorm:"column:done_tasks_count"`
 }
 
 var NotFoundErr = errors.New("team not found")
@@ -60,4 +68,40 @@ func GetTeamsWhereUserIsMember(ctx context.Context, db *gorm.DB, userId int) ([]
 		Find(&teams).Error
 
 	return teams, err
+}
+
+// GetTeamsActivityReport возвращает название, кол-во участников и кол-во задач в статусе Done за последние 7 дней для каждой команды
+func GetTeamsActivityReport(ctx context.Context, db *gorm.DB) ([]Report, error) {
+	var reports []Report
+
+	query := `
+		SELECT 
+			t.id AS team_id,
+			t.name AS team_name,
+			COALESCE(m.members_count, 0) AS members_count,
+			COALESCE(tk.done_tasks_count, 0) AS done_tasks_count
+		FROM teams t
+		LEFT JOIN (
+			SELECT team_id, COUNT(user_id) AS members_count
+			FROM team_members
+			GROUP BY team_id
+		) m ON t.id = m.team_id
+		LEFT JOIN (
+			SELECT team_id, COUNT(id) AS done_tasks_count
+			FROM tasks
+			WHERE status = ? AND updated_at >= NOW() - INTERVAL 7 DAY
+			GROUP BY team_id
+		) tk ON t.id = tk.team_id
+		ORDER BY team_name ASC
+	`
+
+	var args []any
+	args = append(args, enum.Done)
+
+	err := db.WithContext(ctx).Raw(query, args...).Scan(&reports).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return reports, nil
 }

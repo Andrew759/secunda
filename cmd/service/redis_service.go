@@ -12,7 +12,7 @@ type RedisDecorator struct {
 	Client *redis.Client
 }
 
-func InitRedis(config config.RedisConfig) *RedisDecorator {
+func InitRedis(config *config.RedisConfig) *RedisDecorator {
 	client := redis.NewClient(&redis.Options{
 		Addr:     config.Host + ":" + strconv.Itoa(config.Port),
 		Password: config.Password,

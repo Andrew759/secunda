@@ -4,11 +4,13 @@ create table tasks
 (
     id          bigint auto_increment
         primary key,
-    assignee_id bigint    not null,
-    team_id     bigint    not null,
-    created_by  bigint    not null,
-    created_at  timestamp not null,
-    updated_at  timestamp not null,
+    assignee_id bigint       not null,
+    team_id     bigint       not null,
+    created_by  bigint       not null,
+    name        varchar(256) not null,
+    created_at  timestamp    not null,
+    updated_at  timestamp    not null,
+    status      bigint       not null,
     constraint fk_tasks_assignee_user
         foreign key (assignee_id) references users (id),
     constraint fk_tasks_created_by_user
@@ -16,6 +18,7 @@ create table tasks
     constraint fk_tasks_team
         foreign key (team_id) references teams (id)
 );
+
 -- +goose StatementEnd
 
 -- +goose Down

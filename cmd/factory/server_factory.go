@@ -6,7 +6,7 @@ import (
 	"seconda/internal/controller/auth"
 	taskService "seconda/internal/controller/task"
 	"seconda/internal/controller/team"
-	"seconda/internal/model/task"
+	"seconda/internal/enum"
 	"seconda/internal/model/user"
 
 	"github.com/gin-gonic/gin"
@@ -15,23 +15,27 @@ import (
 )
 
 func BuildAndServe(dbDecorator *service.DBDecorator, redisDecorator *service.RedisDecorator) error {
+	e := BuildServer(dbDecorator, redisDecorator)
+
+	return e.Run()
+}
+
+func BuildServer(dbDecorator *service.DBDecorator, redisDecorator *service.RedisDecorator) *gin.Engine {
 	e := gin.Default()
 
 	RegisterRoleValidator()
 	RegisterStatusValidator()
 
-	diContainer := &base.DIContainer{DBDecorator: dbDecorator, RedisDecorator: redisDecorator}
+	diContainer := &base.DIContainer{
+		DBDecorator:    dbDecorator,
+		RedisDecorator: redisDecorator,
+	}
 
 	initAuthService(e, diContainer)
 	initTeamsService(e, diContainer)
 	InitTasksService(e, diContainer)
 
-	err := e.Run()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return e
 }
 
 func initAuthService(e *gin.Engine, aDIC *base.DIContainer) {
@@ -81,7 +85,7 @@ func RegisterRoleValidator() bool {
 func RegisterStatusValidator() bool {
 	if v, ok := binding.Validator.Engine().(*validator.Validate); ok {
 		err := v.RegisterValidation("task_status", func(fl validator.FieldLevel) bool {
-			if val, ok := fl.Field().Interface().(task.Status); ok {
+			if val, ok := fl.Field().Interface().(enum.Status); ok {
 				return val.IsValid()
 			}
 			return false
