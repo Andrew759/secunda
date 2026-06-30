@@ -268,3 +268,230 @@ func TestCreateUserWithInvalidRoleError(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, statusCode)
 	assert.Equal(t, expectedMap, actualMap)
 }
+
+func TestCreateUserWithDuplicateLoginError(t *testing.T) {
+	tc := base.PrepareTestContainer(t)
+
+	firstUserBody := []byte(`{
+		"phone": "+79634823344",
+		"name": "Андрей",
+		"surname": "Вельков",
+		"login": "avelkov",
+		"password": "pass1",
+		"Role": 1
+	}`)
+	tc.SendPost(firstUserBody, "/api/v1/register")
+
+	secondUserBody := []byte(`{
+		"phone": "+79634823355",
+		"name": "Иван",
+		"surname": "Иванов",
+		"login": "avelkov",
+		"password": "pass2",
+		"Role": 1
+	}`)
+	respBytes, statusCode := tc.SendPost(secondUserBody, "/api/v1/register")
+
+	expectedJSON := `{
+		"error": "user with login already exist"
+	}`
+
+	var expectedMap map[string]any
+	json.Unmarshal([]byte(expectedJSON), &expectedMap)
+
+	var actualMap map[string]any
+	json.Unmarshal(respBytes, &actualMap)
+
+	assert.Equal(t, http.StatusConflict, statusCode)
+	assert.Equal(t, expectedMap, actualMap)
+}
+
+func TestCreateUserWithDuplicatePhoneError(t *testing.T) {
+	tc := base.PrepareTestContainer(t)
+
+	firstUserBody := []byte(`{
+		"phone": "+79634823344",
+		"name": "Андрей",
+		"surname": "Вельков",
+		"login": "avelkov",
+		"password": "pass1",
+		"Role": 1
+	}`)
+	tc.SendPost(firstUserBody, "/api/v1/register")
+
+	secondUserBody := []byte(`{
+		"phone": "+79634823344",
+		"name": "Иван",
+		"surname": "Иванов",
+		"login": "iivanov",
+		"password": "pass2",
+		"Role": 1
+	}`)
+	respBytes, statusCode := tc.SendPost(secondUserBody, "/api/v1/register")
+
+	expectedJSON := `{
+		"error": "user with phone already exist"
+	}`
+
+	var expectedMap map[string]any
+	json.Unmarshal([]byte(expectedJSON), &expectedMap)
+
+	var actualMap map[string]any
+	json.Unmarshal(respBytes, &actualMap)
+
+	assert.Equal(t, http.StatusConflict, statusCode)
+	assert.Equal(t, expectedMap, actualMap)
+}
+
+func TestLoginSuccess(t *testing.T) {
+	tc := base.PrepareTestContainer(t)
+
+	body := []byte(`{
+		"phone": "+79634823344",
+		"name": "Андрей",
+		"surname": "Вельков",
+		"login": "avelkov",
+		"password": "pass1",
+		"Role": 1
+	}`)
+
+	tc.SendPost(body, "/api/v1/register")
+
+	body = []byte(`{
+		"login": "avelkov",
+		"password": "pass1"
+	}`)
+	respBytes, statusCode := tc.SendPost(body, "/api/v1/login")
+
+	expectedJSON := `{
+		"payload": {
+			"user_id": "1",
+			"valid": true
+		}
+	}`
+
+	var expectedMap map[string]any
+	json.Unmarshal([]byte(expectedJSON), &expectedMap)
+
+	var actualMap map[string]any
+	json.Unmarshal(respBytes, &actualMap)
+
+	assert.Equal(t, http.StatusOK, statusCode)
+	assert.Equal(t, expectedMap, actualMap)
+}
+
+func TestLoginWithInvalidCredentialsError(t *testing.T) {
+	tc := base.PrepareTestContainer(t)
+
+	body := []byte(`{
+		"phone": "+79634823344",
+		"name": "Андрей",
+		"surname": "Вельков",
+		"login": "avelkov",
+		"password": "pass1",
+		"Role": 1
+	}`)
+
+	tc.SendPost(body, "/api/v1/register")
+
+	body = []byte(`{
+		"login": "avelkov",
+		"password": "invalid_password"
+	}`)
+	respBytes, statusCode := tc.SendPost(body, "/api/v1/login")
+
+	expectedJSON := `{
+		"error": "invalid credentials"
+	}`
+
+	var expectedMap map[string]any
+	json.Unmarshal([]byte(expectedJSON), &expectedMap)
+
+	var actualMap map[string]any
+	json.Unmarshal(respBytes, &actualMap)
+
+	assert.Equal(t, http.StatusInternalServerError, statusCode)
+	assert.Equal(t, expectedMap, actualMap)
+}
+
+func TestLoginWithNotExistUserError(t *testing.T) {
+	tc := base.PrepareTestContainer(t)
+
+	body := []byte(`{
+		"phone": "+79634823344",
+		"name": "Андрей",
+		"surname": "Вельков",
+		"login": "avelkov",
+		"password": "pass1",
+		"Role": 1
+	}`)
+
+	tc.SendPost(body, "/api/v1/register")
+
+	body = []byte(`{
+		"login": "not_exist_user",
+		"password": "invalid_password"
+	}`)
+	respBytes, statusCode := tc.SendPost(body, "/api/v1/login")
+
+	expectedJSON := `{
+		"error": "user not found"
+	}`
+
+	var expectedMap map[string]any
+	json.Unmarshal([]byte(expectedJSON), &expectedMap)
+
+	var actualMap map[string]any
+	json.Unmarshal(respBytes, &actualMap)
+
+	assert.Equal(t, http.StatusNotFound, statusCode)
+	assert.Equal(t, expectedMap, actualMap)
+}
+
+func TestLoginInvalidJsonError(t *testing.T) {
+	tc := base.PrepareTestContainer(t)
+
+	body := []byte(`{ invalid json `)
+	respBytes, statusCode := tc.SendPost(body, "/api/v1/login")
+
+	var actualMap map[string]any
+	json.Unmarshal(respBytes, &actualMap)
+
+	assert.Equal(t, http.StatusBadRequest, statusCode)
+	assert.NotEqual(t, actualMap["error"], nil)
+}
+
+// В тестах куки не передаются
+func TestLoginWithCookieOnlyFailture(t *testing.T) {
+	tc := base.PrepareTestContainer(t)
+
+	registerBody := []byte(`{
+		"phone": "+79634823344",
+		"name": "Андрей",
+		"surname": "Вельков",
+		"login": "avelkov",
+		"password": "pass1",
+		"Role": 1
+	}`)
+
+	tc.SendPost(registerBody, "/api/v1/register")
+
+	body := []byte(`{
+		"login": "avelkov",
+		"password": "pass1"
+	}`)
+	respBytes, statusCode := tc.SendPost(body, "/api/v1/login?use_cookie_only=true")
+
+	expectedJSON := `{
+		"error": "token not found"
+	}`
+
+	var expectedMap map[string]any
+	json.Unmarshal([]byte(expectedJSON), &expectedMap)
+
+	var actualMap map[string]any
+	json.Unmarshal(respBytes, &actualMap)
+
+	assert.Equal(t, http.StatusUnauthorized, statusCode)
+	assert.Equal(t, expectedMap, actualMap)
+}

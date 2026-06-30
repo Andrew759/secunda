@@ -11,7 +11,6 @@ import (
 	"seconda/internal/service"
 	"seconda/pkg/config"
 	"strconv"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
@@ -50,6 +49,8 @@ func (ac *AuthController) Register(c *gin.Context) {
 		(errors.Is(err, user.WithLoginAlreadyExistsErr) || errors.Is(err, user.WithPhoneAlreadyExistsErr)) {
 		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
 		return
+	} else if err != nil && errors.Is(err, user.InvalidCredentialsErr) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
 	} else if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user: " + err.Error()})
 		return
@@ -89,7 +90,7 @@ func (ac *AuthController) Login(c *gin.Context) {
 	if useCookie == "true" {
 		var err error
 		tokenStr, err = c.Cookie("access_token")
-		if err != nil && err.Error() != "http: named cookie not present" {
+		if err != nil && err.Error() == "http: named cookie not present" {
 			c.JSON(http.StatusUnauthorized, gin.H{"error": "token not found"})
 			return
 		}
@@ -107,12 +108,12 @@ func (ac *AuthController) Login(c *gin.Context) {
 			c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
 			return
 		} else if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid credentials"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
 
 		ctx := context.Background()
-		ctx, cancel := context.WithTimeout(ctx, 30*time.Minute)
+		ctx, cancel := context.WithTimeout(ctx, viper.GetDuration(config.AccessTokenLT))
 		defer cancel()
 
 		stringCMD := ac.Controller.DI.RedisDecorator.Client.Get(ctx, strconv.Itoa(u.Id))
