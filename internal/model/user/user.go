@@ -26,6 +26,8 @@ var WithLoginAlreadyExistsErr = errors.New("user with login already exist")
 
 var NotFoundErr = errors.New("user not found")
 
+var InvalidCredentialsErr = errors.New("invalid credentials")
+
 func (u User) TableName() string {
 	return "users"
 }
@@ -60,7 +62,7 @@ func CreateUser(ctx context.Context, db *gorm.DB, u *User) error {
 
 	password, err := passwordHash(u.Password)
 	if err != nil {
-		return err
+		return InvalidCredentialsErr
 	}
 	u.Password = password
 
@@ -81,7 +83,7 @@ func GetUserByLoginAndPass(ctx context.Context, db *gorm.DB, login, password str
 
 	err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
 	if err != nil {
-		return user, err
+		return user, InvalidCredentialsErr
 	}
 
 	return user, nil
