@@ -126,3 +126,53 @@ func (tc TestContainer) SendPost(body []byte, uri string) ([]byte, int) {
 
 	return respBodyBytes, resp.StatusCode
 }
+
+func (tc TestContainer) SendPostWithAuthToken(body []byte, uri string, token string) ([]byte, []*http.Cookie, int) {
+	req, _ := http.NewRequest(
+		"POST",
+		tc.HTTPServer.URL+uri,
+		bytes.NewBuffer(body),
+	)
+	req.Header.Set("Content-Type", "application/json")
+
+	cookie := &http.Cookie{
+		Name:  "access_token",
+		Value: token,
+	}
+	req.AddCookie(cookie)
+
+	resp, err := tc.HTTPClient.Do(req)
+	if err != nil || resp == nil {
+		return nil, resp.Cookies(), 0
+	}
+	defer resp.Body.Close()
+
+	respBodyBytes, _ := io.ReadAll(resp.Body)
+
+	return respBodyBytes, resp.Cookies(), resp.StatusCode
+}
+
+func (tc TestContainer) SendGetWithAuthToken(uri string, token string) ([]byte, []*http.Cookie, int) {
+	req, _ := http.NewRequest(
+		"GET",
+		tc.HTTPServer.URL+uri,
+		nil,
+	)
+	req.Header.Set("Content-Type", "application/json")
+
+	cookie := &http.Cookie{
+		Name:  "access_token",
+		Value: token,
+	}
+	req.AddCookie(cookie)
+
+	resp, err := tc.HTTPClient.Do(req)
+	if err != nil || resp == nil {
+		return nil, resp.Cookies(), 0
+	}
+	defer resp.Body.Close()
+
+	respBodyBytes, _ := io.ReadAll(resp.Body)
+
+	return respBodyBytes, resp.Cookies(), resp.StatusCode
+}
